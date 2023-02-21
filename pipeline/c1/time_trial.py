@@ -11,8 +11,8 @@ import c1
 sns.set_style("whitegrid")
 sns.set_theme(context='talk')
 
-sizes = [1,10,100,1000, 10000, 100000]
-n_reps = 3
+sizes = [1]
+n_reps = 1
 times = []
 
 
