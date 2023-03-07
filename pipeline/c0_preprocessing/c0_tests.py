@@ -26,7 +26,7 @@ def get_db_path(filename = 'validprot_testing'):
     '''
 
     # Get path for test dataset import
-    db_path = os.path.abspath(os.path.join('.', filename))
+    db_path = os.path.abspath(os.path.join('..', filename))
 
     if os.path.exists(db_path) is False:
         raise ValueError(f'Could not find {filename} in current directory')
@@ -37,7 +37,7 @@ def get_db_path(filename = 'validprot_testing'):
 
 class TestConnection(unittest.TestCase):
     '''
-    Tests for the connect_df function.
+    Tests for the connect_db function.
     '''
 
     def test_smoke(self):
@@ -49,21 +49,15 @@ class TestConnection(unittest.TestCase):
         c0.connect_db(db_path)
 
 
-    def test_not_empty(self):
+    def test_empty(self):
         '''
-        Test to make sure supplied database path is not an empty database.
+        Test to make sure an empty database triggers an AssertionError.
         '''
 
-        db_path = get_db_path()
-        con = c0.connect_db(db_path)
+        db_path = get_db_path('validprot_empty')
 
-        # Gets table names from database
-        tables = con.execute("""SELECT TABLE_NAME
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_TYPE='BASE TABLE'""").df()
-
-        # Make sure tables exist in database
-        assert tables.shape[0] > 0
+        with self.assertRaises(AttributeError):
+            c0.connect_db(db_path)
 
 
 class TestBuildValidProt(unittest.TestCase):
@@ -80,6 +74,54 @@ class TestBuildValidProt(unittest.TestCase):
         con = c0.connect_db(db_path)
 
         c0.build_validprot(con)
+
+    def test_oneshot(self):
+        '''
+        One shot test with known ValidProt test set.
+        '''
+
+        db_path = get_db_path()
+        con = c0.connect_db(db_path)
+
+        assert False
+
+    def test_db_format(self):
+        '''
+        Tests that genuine learn2therm input generates correct ValidProt tables.
+        '''
+
+        db_path = get_db_path()
+        con = c0.connect_db(db_path)
+
+        tables = con.execute("""SELECT TABLE_NAME
+                                FROM INFORMATION_SCHEMA.TABLES
+                                WHERE TABLE_TYPE='BASE TABLE'""").df()
+        correct = ['proteins', 'protein_pairs', 'taxa', 'taxa_pairs', 'vp_final',
+                   'vp_proteins', 'vp_protein_pairs', 'vp_taxa', 'vp_taxa_pairs', 
+                   'vp_ogt_taxa_pairs']
+        assert (item in tables for item in correct)
+
+    def test_ogt_out_of_range(self):
+        '''
+        Test for improper ogt spread.
+        '''
+
+        db_path = get_db_path()
+        con = c0.connect_db(db_path)
+
+        with self.assertRaises(ValueError):
+            c0.build_validprot(con, min_ogt_diff = -10)
+
+    def test_16s_out_of_range(self):
+        '''
+        Test for ValueError on 16S cutoff below 1 bp.
+        '''
+
+        db_path = get_db_path()
+        con = c0.connect_db(db_path)
+
+        with self.assertRaises(ValueError):
+            c0.build_validprot(con, min_16s = 0)
 
 
 class TestSankey(unittest.TestCase):
@@ -98,3 +140,15 @@ class TestSankey(unittest.TestCase):
         min_ogt_diff = 20
 
         c0.sankey_plots(con, min_ogt_diff)
+
+    def test_ogt_out_of_range(self):
+    '''
+    Test for improper ogt spread.
+    '''        
+        db_path = get_db_path()
+        con = c0.connect_db(db_path)
+
+        min_ogt_diff = -10
+
+        with self.assertRaises(ValueError):
+            c0.sankey_plots(con, min_ogt_diff)

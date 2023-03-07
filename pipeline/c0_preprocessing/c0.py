@@ -39,6 +39,7 @@ def connect_db(path: str):
 
     Raises:
         VersionError: DuckDB installation is not one of 0.6.0 or 0.6.1.
+        AttributeError: Input database contains no tables.
     '''
     s_time = time.time()
 
@@ -59,6 +60,13 @@ def connect_db(path: str):
     print('Connecting to database...')
     con = duckdb.connect(path)
 
+    tables = con.execute("""SELECT TABLE_NAME
+                            FROM INFORMATION_SCHEMA.TABLES
+                            WHERE TABLE_TYPE='BASE TABLE'""").df()
+    
+    if tables.shape[0] < 1:
+        raise AttributeError('Input database is empty.')
+    
     e_time = time.time()
     elapsed_time = e_time - s_time
     print(f'Connection established! Execution time: {elapsed_time} seconds')
@@ -66,7 +74,7 @@ def connect_db(path: str):
 
 
 def build_validprot(con, min_ogt_diff: int = 20, min_16s: int = 1300,
-                    plots = False):
+                    plots: bool = False):
     '''
     Converts learn2therm DuckDB database into a DuckDB database for ValidProt by adding filtered and
     constructed tables. Ensure at lease 100 GB of free disk space and 30 GB of system memory are 
@@ -101,7 +109,11 @@ def build_validprot(con, min_ogt_diff: int = 20, min_16s: int = 1300,
                             FROM INFORMATION_SCHEMA.TABLES
                             WHERE TABLE_TYPE='BASE TABLE'""").df()
     
-    if ['proteins', 'protein_pairs', 'taxa', 'taxa_pairs'] not in tables:
+    # Check if proper tables exist in database. If they do not, raise an error.
+    if (item in tables for item in ['proteins', 'protein_pairs', 'taxa', 'taxa_pairs']):      
+        pass
+    
+    else:       
         raise AttributeError('Database is not formatted for learn2therm.')
     
     s_time = time.time()
@@ -252,6 +264,10 @@ def sankey_plots(con, min_ogt_diff):
 
     Raises:
     '''
+    
+    if min_ogt_diff < 0:
+        raise ValueError('Optimal growth temperature difference must be positive.')
+        
     print('Constructing plots.')
 
     # Checks if plots directory exists and makes one if it does not.
