@@ -42,6 +42,7 @@ def fetch_data(path, form = 'duckdb', size: int = 1000, method = 'random', idx_r
         ValueError: form must be one of ['csv', 'duckdb']. Other data types not yet supported.
         ValueError: method must be one of ['random', 'numeric', 'chunk']
         ValueError: Index range must be positive.
+        AttributeError: Input data does not contain necessary alignment features.
     '''
 
     forms = ['csv', 'duckdb']
@@ -132,7 +133,15 @@ def fetch_data(path, form = 'duckdb', size: int = 1000, method = 'random', idx_r
 
             validprot_df = con.execute(num_cmd)
 
-    # Feature filtering to be added.
-    #features = []
+    # Most recent list of features for ML model
+    features = ['bit_score','local_gap_compressed_percent_id','scaled_local_query_percent_id',
+                      'scaled_local_symmetric_percent_id','query_align_len', 'query_align_cov',
+                      'subject_align_len', 'subject_align_cov', 'm_protein_len', 't_protein_len', 't_protein_desc']
+    if (item in validprot_df.columns for item in features):
+        pass
+    else:
+        raise AttributeError(f'Database is not formatted for learn2therm. It may be missing features. Note: DataFrame must include {features}')
+        
+    validprot_df = validprot_df[features]
 
     return validprot_df
